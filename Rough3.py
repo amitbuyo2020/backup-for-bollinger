@@ -7,7 +7,7 @@ from IPython.display import display
 import matplotlib as mpl
 
 ## Trading Data
-data = yf.download("TSLA", period = "5d", interval = "15m")
+data = yf.download("TSLA", period = "12mo", interval = "1d")
 data = pd.DataFrame(data)
 
 ## separateing date and time if datetime is in column not in index
@@ -33,59 +33,16 @@ def get_bollinger_bands(prices, rate=20):
 #     data.index.time], names=['Date','Time'])
 
 
-# print(data)
-
-
-## Removing time from pandas series of date
-# a = data["Datetime"].dt.date
-# for i in a:
-#     b = (data.loc[a]["High"].max())
-#     print(i)
-#     print(b)
-
-
-
+## Calculating Bollinger Band
 bollinger_up, bollinger_down, sma = get_bollinger_bands(data["Close"])
 data["bollinger_up"] = bollinger_up
 data["bollinger_down"] = bollinger_down
 data["SMA"] = sma
-# data["SMA"] = sma
-# print(data)
 
 
-# data = data.dropna()
-# ax1,ax2,ax3,ax4,ax5 = fplt.create_plot('Bitcoin/Dollar long term analysis', rows=5, maximize=False)
-# fplt.set_y_scale(ax=ax1, yscale='log')
-# data['ma200'] = data.Close.rolling(20).mean()
-# data['ma50'] = data.Close.rolling(50).mean()
-# fplt.plot(data.ma200, legend='MA20')
-# fplt.plot(data.ma50, legend='MA50', ax=ax1)
-
-## Plot the chart
-# fplt.plot(data["Datetime"],data.SMA)
-# fplt.plot(data["Datetime"], data["bollinger_up"])
-# fplt.plot(data["Datetime"],data["bollinger_down"])
-# fplt.candlestick_ochl(data[["Datetime","Open", "Close", "High", "Low"]])
-# fplt.show()
 
 
-# rows_with_nan = [index for index, row in data.iterrows() if row.isnull().any()]
-
-# print(rows_with_nan)
-
-# # Syntax of enumerate()
-# enumerate(data[bollinger_up],start=0)
-
-
-# data["bollinger_up", ["bollinger_down"], ["SMA"]] = data["bollinger_up", "bollinger_down"], ["SMA"].dropna()
-
-##Swing High
-
-# for i in data:
-#     if data.loc(i, "bollinger_up") >= data.loc(i,"High"):
-#             data["Swing"] = "SwingHigh"
-#             print(data["Swing"])
-
+## Swing High and Swing Lows
 # data["Swing"] = data.groupby(['High', 'bollinger_up']).apply(data.High >= data.bollinger_up)
 data['Swing_High'] = np.where((data["High"] >= data["bollinger_up"]),
      data["High"], np.nan)
@@ -94,9 +51,7 @@ data['Swing_Low'] = np.where((data["Low"] <= data["bollinger_down"]),
      data["Low"], np.nan)
 data["Swing_Low"] = pd.DataFrame(data["Swing_Low"])
 
-# data = data.dropna()
 
-# data.to_csv("Rough2.csv")
 
 ## Plot the chart
 fplt.plot(data["Datetime"],data["SMA"])
@@ -117,31 +72,6 @@ fplt.plot(data["Datetime"],data["bollinger_down"])
 
 
 
-## FInding first Index of non-NAN Swing Low Value
-
-# fplt.add_text((data.loc[First_Swing_Low, "Datetime"], data.loc[First_Swing_Low, "Swing_Low"]), "Low", color = "#bb7700")
-
-## Plotting FIrst Swing High after finding  first index of Swing low
-
-# fplt.add_text((data.loc[First_Swing_High, "Datetime"], data.loc[First_Swing_High, "Swing_High"]), "H", color = "#bb7700")
-
-
-
-
-# ## Next High touching BB
-
-# fplt.add_text((data.loc[Shell_Swing_High, "Datetime"], data.loc[Shell_Swing_High, "Swing_High"]), "H", color = "#bb7700")
-
-# ## Finding Exact Swing Low
-# First_Swing_Low = data["High"][First_Swing_High:Shell_Swing_High].idxmin()
-# fplt.add_text((data.loc[First_Swing_Low, "Datetime"], data.loc[First_Swing_Low, "Swing_Low"]), "Low", color = "#bb7700")
-# print(First_Swing_Low)
-
-# ## Plotting candlestick and showing all the Plots
-# fplt.candlestick_ochl(data[["Datetime","Open", "Close", "High", "Low"]])
-# fplt.show()
-
-
 ##Swing High
 data["Modified1"] = np.append(np.isnan(data["Swing_High"].values)[1:], False)
 pd.Series(data["Swing_High"].values[data["Modified1"]], data["Swing_High"].index[data["Modified1"]])
@@ -158,27 +88,51 @@ data["Modified_Swing_Low"] = pd.DataFrame(data["Modified_Swing_Low"])
 
 
 
-# data['Swing_Low'] = np.where((data["Low"] <= data["bollinger_down"]),
-#      data["Low"], np.nan)
-# data["Swing_Low"] = pd.DataFrame(data["Swing_Low"])
 
+res = data[data['Modified_Swing_Low'].notnull()]
+res.reset_index(inplace=True)
+res = res.rename(columns = {'index':'final'})
 
-# display(data)
-# print(data.style)
-# print(data["Modified_Swing_High"])
+##Convert Strings to Integers in Pandas DataFrame
+# res = res['final'].astype(int)
+# valid_MSH_value_list = []
+# valid_MSH_date_list = []
+# for obj in res:
+#     u = data["Modified_Swing_High"].loc[:res+1].last_valid_index()
+#     v = data["Modified_Swing_High"][u]
+#     x = data["Datetime"][u]
+#     valid_MSH_value_list.append(v)
+#     valid_MSH_date_list.append(x)
 
-# res = data[data['Modified_Swing_Low'].notnull()]
+# a = pd.DataFrame(list(zip(valid_MSH_value_list, valid_MSH_date_list)),columns=['lst1_title','lst2_title'])
+
+# print(a)
+
+# res.to_csv("any1")
+# pd.set_option('display.max_rows', res.shape[0]+1)
 # print(res)
+# print(res["Modified_Swing_Low"])
+
+
+
 resp = np.argwhere(data["Modified_Swing_Low"].notnull().values).tolist()
 valid_MSH_value_list = []
 valid_MSH_date_list = []
+valid_index = None
+valid_MSH = None
+valid_date = None
+
 for obj in resp:
     index = obj[0]
-    valid_index = data['Modified_Swing_High'][:index].last_valid_index()
-    valid_MSH = data["Modified_Swing_High"][valid_index]
-    valid_date = data["Datetime"][valid_index]
-    valid_MSH_value_list.append(valid_MSH)
-    valid_MSH_date_list.append(valid_date)
+    try:
+        valid_index = data['Modified_Swing_High'][:index].last_valid_index()
+        valid_MSH = data["Modified_Swing_High"][valid_index]
+        valid_date = data["Datetime"][valid_index]
+        valid_MSH_value_list.append(valid_MSH)
+        valid_MSH_date_list.append(valid_date)
+    except:
+        pass
+
 MSH_data = {
     "Valid_MSH": valid_MSH_value_list,
     "Datetime": valid_MSH_date_list
@@ -188,36 +142,19 @@ print(MSH_df)
 
 
 
-## Plotting Swing Highs
-for i in range(len(MSH_df)):
-    # print(data.loc[i, "Datetime"], data.loc[i, "Swing_High"])
-    fplt.add_text((MSH_df.loc[i, "Datetime"], MSH_df.loc[i, "Valid_MSH"]), "Hah", color = "#bb7700")
-# print(First_Swing_Low)
-# ## Plotting candlestick and showing all the Plots
+# # Plotting Swing Highs
+# for i in range(len(MSH_df)):
+#     # print(data.loc[i, "Datetime"], data.loc[i, "Swing_High"])
+#     fplt.add_text((MSH_df.loc[i, "Datetime"], MSH_df.loc[i, "Valid_MSH"]), "Hah", color = "#bb7700")
+# # print(First_Swing_Low)
+
+
+## Plotting candlestick and showing all the Plots
 fplt.candlestick_ochl(data[["Datetime","Open", "Close", "High", "Low"]])
 fplt.show()
 
 
-# valid_MSH_dict = {}
-# for obj in resp:
-#     index = obj[0]
-#     valid_index = data['Modified_Swing_High'][:index].last_valid_index()
-#     valid_MSH = data["Modified_Swing_High"][valid_index]
-#     valid_data = {
-#         "Datetime": data["Datetime"][valid_index],
-#         "Valid_MSH": valid_MSH
-#     }
-# valid_MSH_dict.update(valid_data)
-# index = [x for x in range(1, len(valid_MSH_dict)+1)]
-# MSH_df = pd.DataFrame(index, valid_MSH_dict)
 
-# print(MSH_df)
-# MSH_df = pd.DataFrame(MSH_data)
-# for i, row in data.iterrows():
-# data["a"] = data["Modified_Swing_High"][:res]
-# data.to_csv("any")
-# pd.set_option('display.max_rows', data.shape[0]+1)
-# print(data)
 
 
 
